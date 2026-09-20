@@ -1,0 +1,50 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Tests must pass before releasing
+        run: npm test
+      - name: Package smoke must pass before releasing
+        run: node scripts/package-smoke.mjs
+      - name: Tag must match specify/package.json version
+        run: |
+          pkg_version="$(node -p "require('./specify/package.json').version")"
+          tag="${GITHUB_REF_NAME#v}"
+          if [ "$pkg_version" != "$tag" ]; then
+            echo "::error::tag v$tag does not match specify/package.json version $pkg_version"
+            exit 1
+          fi
+      - name: skill-release.json must match the tag and declare a channel
+        id: release-kind
+        run: |
+          version="$(node -p "require('./specify/skill-release.json').version")"
+          channel="$(node -p "require('./specify/skill-release.json').channel")"
+          tag="${GITHUB_REF_NAME#v}"
+          if [ "$version" != "$tag" ]; then
+            echo "::error::skill-release.json version $version does not match tag v$tag"
+            exit 1
+          fi
+          if [ "$channel" != "stable" ] && [ "$channel" != "development" ]; then
+            echo "::error::skill-release.json channel must be 'stable' or 'development', got '$channel'"
+            exit 1
+          fi
+          echo "prerelease=$([ "$channel" = "development" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          generate_release_notes: true
+          prerelease: ${{ steps.release-kind.outputs.prerelease }}
+          make_latest: ${{ steps.release-kind.outputs.prerelease == 'false' }}

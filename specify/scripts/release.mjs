@@ -47,8 +47,13 @@ async function main() {
   pkg.version = nextVersion;
   await writeFile(pkgPath, JSON.stringify(pkg, null, 2) + "\n", "utf8");
 
+  const releasePath = path.join(root, "skill-release.json");
+  const release = JSON.parse(await readFile(releasePath, "utf8"));
+  release.version = nextVersion;
+  await writeFile(releasePath, JSON.stringify(release, null, 2) + "\n", "utf8");
+
   const tag = `v${nextVersion}`;
-  await sh("git", ["add", "package.json"]);
+  await sh("git", ["add", "package.json", "skill-release.json"]);
   await sh("git", ["commit", "-m", `chore(release): ${tag}`]);
   await sh("git", ["tag", "-a", tag, "-m", tag]);
 
