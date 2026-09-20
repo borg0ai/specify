@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RFC document",
+  "type": "object",
+  "required": ["id", "slug", "title", "status"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[0-9]{4}$",
+      "description": "Zero-padded 4-digit RFC number, unique across active + archived RFCs"
+    },
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "description": "kebab-case slug, matches filename NNNN-slug.md"
+    },
+    "title": { "type": "string", "minLength": 1 },
+    "status": {
+      "type": "string",
+      "enum": ["Draft", "Under Review", "Approved", "Implemented", "Rejected", "Superseded"]
+    },
+    "supersededBy": {
+      "type": "string",
+      "pattern": "^[0-9]{4}$",
+      "description": "Required when status is Superseded"
+    },
+    "sections": {
+      "type": "object",
+      "description": "Only Summary is enforced. Problem/Goals/Non-goals/Design/Delivery/Acceptance are the project's common convention but vary by author and era — treated as recommended, not required.",
+      "required": ["Summary"],
+      "properties": {
+        "Summary": { "type": "string", "minLength": 1 }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "Superseded" } } },
+      "then": { "required": ["supersededBy"] }
+    }
+  ]
+}

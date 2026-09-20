@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ROADMAP.md index row",
+  "type": "object",
+  "required": ["id", "title", "status"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^[0-9]{4}$" },
+    "title": { "type": "string", "minLength": 1 },
+    "status": {
+      "type": "string",
+      "enum": ["Draft", "Under Review", "Approved", "Implemented", "Rejected", "Superseded"]
+    },
+    "phase": { "type": "string" }
+  }
+}
