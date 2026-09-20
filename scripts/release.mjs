@@ -55,7 +55,13 @@ async function main() {
   console.log(`Bumped ${pkg.name} to ${nextVersion}, committed, tagged ${tag}.`);
 
   if (push) {
-    await sh("git", ["push"]);
+    const branch = await sh("git", ["rev-parse", "--abbrev-ref", "HEAD"]);
+    const hasUpstream = await sh("git", ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"]).catch(() => "");
+    if (hasUpstream) {
+      await sh("git", ["push"]);
+    } else {
+      await sh("git", ["push", "--set-upstream", "origin", branch]);
+    }
     await sh("git", ["push", "origin", tag]);
     console.log(`Pushed commit and tag ${tag} to origin.`);
   } else {
