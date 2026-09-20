@@ -20,6 +20,16 @@ Every command reads and writes these three pieces together in one pass, so they 
 npx skills add borg0ai/specify
 ```
 
+Target a specific agent with `-a <agent>`:
+
+```bash
+npx skills add borg0ai/specify -a codex
+npx skills add borg0ai/specify -a opencode
+npx skills add borg0ai/specify -a claude-code
+npx skills add borg0ai/specify -a antigravity
+npx skills add borg0ai/specify -a cursor
+```
+
 ## Commands
 
 ```bash
