@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 
 const execFileP = promisify(execFile);
-const CLI = path.join(import.meta.dirname, "..", "bin", "specify.mjs");
+const CLI = path.join(import.meta.dirname, "..", "specify", "bin", "specify.mjs");
 
 async function run(args, cwd) {
   try {

@@ -1,23 +1,12 @@
 {
-  "name": "specify",
-  "version": "0.1.1",
-  "description": "CLI for managing RFC-based spec documents: init, validate, deliver, advance, archive, sync-check across ROADMAP.md, TASK_TRACKING.md, and rfc/NNNN-slug.md.",
-  "license": "MIT",
+  "name": "specify-repo",
+  "private": true,
   "type": "module",
-  "bin": {
-    "specify": "./bin/specify.mjs"
+  "scripts": {
+    "test": "node --test",
+    "release": "node specify/scripts/release.mjs"
   },
   "engines": {
     "node": ">=18"
-  },
-  "files": [
-    "bin",
-    "schemas",
-    "references",
-    "SKILL.md"
-  ],
-  "scripts": {
-    "test": "node --test test/cli.test.mjs",
-    "release": "node scripts/release.mjs"
   }
 }
