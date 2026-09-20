@@ -20,14 +20,10 @@ Every command reads and writes these three pieces together in one pass, so they 
 npx skills add borg0ai/specify
 ```
 
-Target a specific agent with `-a <agent>`:
+Install for Codex, OpenCode, Claude Code, Antigravity, and Cursor in one command:
 
 ```bash
-npx skills add borg0ai/specify -a codex
-npx skills add borg0ai/specify -a opencode
-npx skills add borg0ai/specify -a claude-code
-npx skills add borg0ai/specify -a antigravity
-npx skills add borg0ai/specify -a cursor
+npx skills add borg0ai/specify -a codex -a opencode -a claude-code -a antigravity -a cursor
 ```
 
 ## Commands

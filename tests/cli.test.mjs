@@ -5,9 +5,11 @@ import { promisify } from "node:util";
 import { mkdtemp, mkdir, writeFile, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const execFileP = promisify(execFile);
-const CLI = path.join(import.meta.dirname, "..", "specify", "bin", "specify.mjs");
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const CLI = path.join(__dirname, "..", "specify", "bin", "specify.mjs");
 
 async function run(args, cwd) {
   try {
