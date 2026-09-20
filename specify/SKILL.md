@@ -55,4 +55,4 @@ Add `--json` for machine-readable output, `--root <dir>` to point at a repo othe
 
 ## Setup
 
-No install required — the CLI is plain Node (`>=18`), zero runtime dependencies. Run tests with `npm test` (`node --test test/cli.test.mjs`).
+No install required — the CLI is plain Node (`>=22`), zero runtime dependencies. Run tests from the repo root with `npm test` (`node --test`, discovers `tests/`).
