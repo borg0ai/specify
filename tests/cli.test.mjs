@@ -41,6 +41,26 @@ test("init finds mixed root+.spec layout and computes next id", async () => {
   await rm(dir, { recursive: true, force: true });
 });
 
+test("init scaffolds .spec/rfc, ROADMAP.md, and TASK_TRACKING.md in an empty repo", async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), "specify-test-"));
+  const result = await run(["init"], dir);
+  assert.equal(result.ok, true);
+  assert.equal(result.scaffolded, true);
+  assert.equal(result.nextId, "0001");
+  assert.deepEqual(result.existingIds, []);
+  await readFile(path.join(dir, ".spec", "ROADMAP.md"), "utf8");
+  await readFile(path.join(dir, ".spec", "TASK_TRACKING.md"), "utf8");
+
+  const deliverResult = await run(["deliver", "0001", "first", "First RFC"], dir);
+  assert.equal(deliverResult.ok, true);
+
+  const second = await run(["init"], dir);
+  assert.equal(second.ok, true);
+  assert.ok(!second.scaffolded);
+  assert.deepEqual(second.existingIds, ["0001"]);
+  await rm(dir, { recursive: true, force: true });
+});
+
 test("init does not mistake years in prose for RFC ids", async () => {
   const dir = await makeFixture();
   await writeFile(

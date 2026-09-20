@@ -94,9 +94,29 @@ function parseSections(rfcText, required) {
   return sections;
 }
 
-async function cmdInit(layout) {
+async function cmdInit(layout, rootArg) {
   if (!layout) {
-    return { ok: false, message: "No ROADMAP.md/rfc tree found. Create ROADMAP.md, TASK_TRACKING.md, and an rfc/ directory (root, .spec/, or docs/) before running specify." };
+    const root = path.resolve(rootArg);
+    const rfcDir = path.join(root, ".spec", "rfc");
+    const roadmapPath = path.join(root, ".spec", "ROADMAP.md");
+    const tasksPath = path.join(root, ".spec", "TASK_TRACKING.md");
+    await mkdir(rfcDir, { recursive: true });
+    await mkdir(path.join(rfcDir, "completed"), { recursive: true });
+    await mkdir(path.join(rfcDir, "rejected"), { recursive: true });
+    await writeFile(roadmapPath, "# Roadmap\n\n| RFC | Title | Status |\n|-----|-------|--------|\n");
+    await writeFile(tasksPath, "# Task Tracking\n");
+    layout = { root, docDir: path.join(root, ".spec"), rfcDir };
+    const p = paths(layout);
+    return {
+      ok: true,
+      scaffolded: true,
+      root: layout.root,
+      roadmap: p.roadmap,
+      tasks: p.tasks,
+      rfcDir: p.rfcDir,
+      existingIds: [],
+      nextId: "0001",
+    };
   }
   const p = paths(layout);
   const roadmapText = await readIfExists(p.roadmap);
@@ -328,7 +348,7 @@ async function main() {
   let result;
   switch (command) {
     case "init":
-      result = await cmdInit(layout);
+      result = await cmdInit(layout, rootArg);
       break;
     case "validate":
       result = await cmdValidate(layout, rest[0]);

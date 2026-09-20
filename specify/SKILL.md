@@ -8,7 +8,7 @@ metadata:
 
 # Specify
 
-A CLI (`bin/specify.mjs`) that reads and writes the three-file RFC convention: `ROADMAP.md` (index), `TASK_TRACKING.md` (task board), `rfc/NNNN-slug.md` (spec bodies, with `completed/` and `rejected/` archive subdirs). It locates that convention automatically wherever the three pieces live — inside `.spec/`, at repo root with `docs/rfc/`, or a `.spec/rfc/` tree paired with root-level `ROADMAP.md`/`TASK_TRACKING.md` (all three are real layouts seen in practice; don't assume one).
+A CLI (`bin/specify.mjs`) that reads and writes the three-file RFC convention: `ROADMAP.md` (index), `TASK_TRACKING.md` (task board), `rfc/NNNN-slug.md` (spec bodies, with `completed/` and `rejected/` archive subdirs). It locates that convention automatically wherever the three pieces live — inside `.spec/`, at repo root with `docs/rfc/`, or a `.spec/rfc/` tree paired with root-level `ROADMAP.md`/`TASK_TRACKING.md` (all three are real layouts seen in practice; don't assume one). If none of those layouts exist yet, `init` scaffolds a fresh `.spec/ROADMAP.md`, `.spec/TASK_TRACKING.md`, and `.spec/rfc/` (with `completed/` and `rejected/`) at the given root.
 
 Every command exits non-zero on failure. Never report success from a non-zero exit, and never hand-edit ROADMAP/TASK_TRACKING/RFC files when a command exists for the operation — the commands keep the three files in sync in one pass, which manual edits reliably drift out of.
 
