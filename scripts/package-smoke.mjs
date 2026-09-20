@@ -52,17 +52,15 @@ try {
   }
 
   const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "specify-package-smoke-"));
-  fs.mkdirSync(path.join(scratch, "rfc"));
-  fs.writeFileSync(path.join(scratch, "ROADMAP.md"), "# Roadmap\n");
-  fs.writeFileSync(path.join(scratch, "TASK_TRACKING.md"), "# Task Tracking\n");
 
   const initOut = run(["init", "--root", scratch, "--json"]);
   const init = JSON.parse(initOut);
   if (!init.ok) throw new Error(`init failed on a fresh scratch tree: ${initOut}`);
+  if (!init.scaffolded) throw new Error(`init did not scaffold a fresh .spec/ tree: ${initOut}`);
   if (init.nextId !== "0001") throw new Error(`expected nextId 0001, got ${init.nextId}`);
 
   run(["deliver", "0001", "smoke-test", "Smoke Test", "--root", scratch]);
-  const rfcPath = path.join(scratch, "rfc", "0001-smoke-test.md");
+  const rfcPath = path.join(scratch, ".spec", "rfc", "0001-smoke-test.md");
   if (!fs.existsSync(rfcPath)) throw new Error(`deliver did not create ${rfcPath}`);
 
   const validateOut = run(["validate", rfcPath, "--json"]);

@@ -23,8 +23,8 @@ async function run(args, cwd) {
 async function makeFixture() {
   const dir = await mkdtemp(path.join(tmpdir(), "specify-test-"));
   await mkdir(path.join(dir, ".spec", "rfc", "completed"), { recursive: true });
-  await writeFile(path.join(dir, "ROADMAP.md"), "# ROADMAP\n\nSee [0001](.spec/rfc/0001-first.md).\n");
-  await writeFile(path.join(dir, "TASK_TRACKING.md"), "# TASK_TRACKING\n");
+  await writeFile(path.join(dir, ".spec", "ROADMAP.md"), "# ROADMAP\n\nSee [0001](.spec/rfc/0001-first.md).\n");
+  await writeFile(path.join(dir, ".spec", "TASK_TRACKING.md"), "# TASK_TRACKING\n");
   await writeFile(
     path.join(dir, ".spec", "rfc", "0001-first.md"),
     "# RFC 0001: First\n\n**Status:** Draft\n\n## Summary\n\nTest.\n",
@@ -32,7 +32,7 @@ async function makeFixture() {
   return dir;
 }
 
-test("init finds mixed root+.spec layout and computes next id", async () => {
+test("init finds existing .spec layout and computes next id", async () => {
   const dir = await makeFixture();
   const result = await run(["init"], dir);
   assert.equal(result.ok, true);
@@ -113,9 +113,9 @@ test("deliver writes RFC file, ROADMAP row, and TASK_TRACKING line in one pass",
   assert.equal(result.ok, true);
   const rfc = await readFile(path.join(dir, ".spec", "rfc", "0002-second-rfc.md"), "utf8");
   assert.match(rfc, /\*\*Status:\*\* Draft/);
-  const roadmap = await readFile(path.join(dir, "ROADMAP.md"), "utf8");
+  const roadmap = await readFile(path.join(dir, ".spec", "ROADMAP.md"), "utf8");
   assert.match(roadmap, /0002/);
-  const tasks = await readFile(path.join(dir, "TASK_TRACKING.md"), "utf8");
+  const tasks = await readFile(path.join(dir, ".spec", "TASK_TRACKING.md"), "utf8");
   assert.match(tasks, /RFC 0002/);
   await rm(dir, { recursive: true, force: true });
 });

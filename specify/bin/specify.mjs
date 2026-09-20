@@ -20,22 +20,13 @@ Commands:
 `);
 }
 
-const RFC_DIR_CANDIDATES = [
-  [".spec", "rfc"],
-  ["docs", "rfc"],
-  ["rfc"],
-];
-const DOC_CANDIDATES = [[".spec"], ["."]];
-
 function findRoot(startDir) {
   let dir = startDir;
   for (let i = 0; i < 6; i++) {
-    const rfcDir = RFC_DIR_CANDIDATES.map((parts) => path.join(dir, ...parts)).find(existsSync);
-    if (rfcDir) {
-      const docDir = DOC_CANDIDATES.map((parts) => path.join(dir, ...parts)).find((d) =>
-        existsSync(path.join(d, "ROADMAP.md")),
-      );
-      if (docDir) return { root: dir, docDir, rfcDir };
+    const docDir = path.join(dir, ".spec");
+    const rfcDir = path.join(docDir, "rfc");
+    if (existsSync(rfcDir) && existsSync(path.join(docDir, "ROADMAP.md"))) {
+      return { root: dir, docDir, rfcDir };
     }
     const parent = path.dirname(dir);
     if (parent === dir) break;

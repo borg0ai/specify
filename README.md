@@ -12,7 +12,7 @@ Also packaged as an [agent skill](https://github.com/vercel-labs/skills) (`SKILL
 - **`TASK_TRACKING.md`** — the task board: one line per RFC linking to its concrete work items.
 - **`rfc/NNNN-slug.md`** — the actual spec body, with a `**Status:**` header line and a `## Summary` section. Terminal-status RFCs (`Implemented`, `Rejected`, `Superseded`) live under `rfc/completed/` or `rfc/rejected/`.
 
-Every command reads and writes these three pieces together in one pass, so they can never drift out of sync the way hand-editing does (e.g. "ROADMAP says Approved, RFC header still says Draft"). `init` auto-detects which of the real-world layouts your repo uses (`.spec/`, root + `docs/rfc/`, or `.spec/rfc/` with root-level index files) rather than assuming one. `sync-check` is the pre-commit gate: it fails if an RFC has no ROADMAP row, or if an id exists both as active and archived at once.
+Every command reads and writes these three pieces together in one pass, so they can never drift out of sync the way hand-editing does (e.g. "ROADMAP says Approved, RFC header still says Draft"). The layout is always `.spec/` — `init` scaffolds it if it doesn't exist yet. `sync-check` is the pre-commit gate: it fails if an RFC has no ROADMAP row, or if an id exists both as active and archived at once.
 
 ## Install
 
