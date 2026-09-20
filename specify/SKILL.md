@@ -12,26 +12,41 @@ A CLI (`bin/specify.mjs`) that reads and writes the three-file RFC convention un
 
 Every command exits non-zero on failure. Never report success from a non-zero exit, and never hand-edit ROADMAP/TASK_TRACKING/RFC files when a command exists for the operation — the commands keep the three files in sync in one pass, which manual edits reliably drift out of.
 
+## Scope discipline (enforced)
+
+**One RFC = one concern.** Never dump unrelated fixes or features into a single mega-RFC.
+
+When a theme spans multiple concerns, use an **umbrella + children**:
+
+1. `deliver <id> <slug> "<title>" --umbrella` — indexes children; holds completion criteria; **no** implementation detail dump.
+2. `deliver <id> <slug> "<title>" --parent <umbrella-id>` — one concern; writes `**Parent:**` and appends a row to the umbrella's `## Children` table in the same change set.
+3. Track work and checklists on children in `TASK_TRACKING.md`.
+4. Close the umbrella when children are Approved/Implemented. **Never reopen** an umbrella for new work — spawn a new child or a new umbrella.
+
+`validate` and `sync-check` enforce mutual links: every listed child must declare that parent; every `**Parent:**` must point at an Umbrella that lists the child. An RFC cannot be both umbrella and child.
+
 ## Commands
 
 ```bash
-node bin/specify.mjs init                                   # locate the tree, print next RFC id
-node bin/specify.mjs validate <rfc-file>                    # check one RFC's format + status consistency
-node bin/specify.mjs deliver <id> <slug> <title>             # create RFC + ROADMAP row + TASK_TRACKING line
-node bin/specify.mjs advance <id> <new-status>               # update status in RFC header + ROADMAP row
-node bin/specify.mjs archive <id>                             # move an Implemented/Rejected/Superseded RFC
-node bin/specify.mjs sync-check                               # verify all three files agree (pre-commit gate)
+node bin/specify.mjs init                                      # locate or scaffold .spec/, print next RFC id
+node bin/specify.mjs validate <rfc-file>                       # schema + ROADMAP + umbrella/child links
+node bin/specify.mjs deliver <id> <slug> <title>               # standalone RFC + ROADMAP + TASK_TRACKING
+node bin/specify.mjs deliver <id> <slug> <title> --umbrella    # umbrella template + Type marker
+node bin/specify.mjs deliver <id> <slug> <title> --parent NNNN # child template; link both ways
+node bin/specify.mjs advance <id> <new-status>                 # update status in RFC header + ROADMAP row
+node bin/specify.mjs archive <id>                              # move Implemented/Rejected/Superseded RFC
+node bin/specify.mjs sync-check                                # ROADMAP/TASK_TRACKING/rfc + umbrella links
 ```
 
 Add `--json` for machine-readable output, `--root <dir>` to point at a repo other than the cwd.
 
 ## Workflow
 
-1. **Starting a new RFC:** run `init` to confirm the tree and get the next id, then `deliver <id> <slug> "<title>"`. This writes the RFC file from a template, appends the ROADMAP index row, and appends a TASK_TRACKING line — all three in one call, matching the "do all steps in one change set" rule this convention expects. Fill in the RFC's TODO sections yourself; don't leave them as placeholders when you report the RFC as created.
-2. **Before treating any RFC edit as done:** run `validate <file>`. Fix every reported error; recommended-section warnings are informational — use judgment on whether they apply; do not fix a warning by inventing a section with no content.
-3. **Changing status:** run `advance <id> <status>` rather than editing the `**Status:**` line by hand — it updates both the RFC header and the ROADMAP row together, which is the exact failure mode ("ROADMAP says Approved, RFC header still says Draft") that manual edits produce.
-4. **Implemented/Rejected/Superseded:** after `advance`, if the result reports `needsArchive: true`, run `archive <id>` to move the file into `rfc/completed/` or `rfc/rejected/`. An RFC's status and its directory must agree — `sync-check` catches it if they don't.
-5. **Before a commit that touches RFC files:** run `sync-check`. It flags an RFC with no ROADMAP index row and an id appearing both active and archived at once.
+1. **Starting work:** run `init` for the next id. If the theme is multi-concern, deliver an `--umbrella` first, then one `--parent <id>` child per concern. If it is a single concern, deliver a standalone RFC (no flags). Fill TODO sections before treating the RFC as authored.
+2. **Before treating any RFC edit as done:** run `validate <file>`. Fix every reported error; recommended-section warnings are informational — use judgment; do not invent empty sections to silence them.
+3. **Changing status:** run `advance <id> <status>` — updates RFC header and ROADMAP together.
+4. **Implemented/Rejected/Superseded:** after `advance`, if `needsArchive: true`, run `archive <id>`.
+5. **Before a commit that touches RFC files:** run `sync-check`.
 
 ## Status enum
 
@@ -40,18 +55,22 @@ Add `--json` for machine-readable output, `--root <dir>` to point at a repo othe
 ## What validate actually checks
 
 - Filename matches `NNNN-kebab-slug.md`.
-- A `**Status:**` (or `- **Status**:`) header line exists and its leading word is in the enum — trailing notes and emoji (`✅ Implemented（2026-07-24, follow-up scope）`) are allowed and ignored for the enum check.
+- A `**Status:**` (or `- **Status**:`) header line exists and its leading word is in the enum — trailing notes and emoji are allowed and ignored for the enum check.
 - An H1 title line exists.
-- A `## Summary` section exists and is non-empty — this is the only universally-enforced section, because `Problem`/`Goals`/`Non-goals`/`Design`/`Delivery`/`Acceptance` vary by author and era in real RFC trees. Missing ones are reported as warnings, not errors.
-- No `- [ ]`/`- [x]` checklist items in an **active** RFC body (those belong in TASK_TRACKING.md and drift out of sync otherwise) — a checklist in an already-archived RFC (`completed/`/`rejected/`) is treated as a legitimate historical record, not a violation.
-- If ROADMAP.md links to this RFC's id and mentions a status word nearby, a mismatch against the RFC header is reported as a warning — ROADMAP.md is often free-form prose with markdown links rather than a structured table, so this is a hint to check manually, not a hard failure.
+- A `## Summary` section exists and is non-empty — the only universally-enforced section. Missing recommended sections are warnings.
+- No `- [ ]`/`- [x]` checklist items in an **active** RFC body (archived checklists are allowed as history).
+- ROADMAP nearby-status mismatch → warning (hint only).
+- **Umbrella/child:** `**Type:** Umbrella` (or title `(Umbrella)`) with empty Children → warning; listed child missing file or wrong/missing Parent → error; `**Parent:**` without umbrella parent or without back-link in Children → error; both umbrella and parent on one file → error.
 
 ## Do not
 
-- Duplicate the RFC index as a `README.md` under `.spec/` or `rfc/` — the convention is exactly three files/trees.
+- Bundle multiple concerns into one RFC — split into umbrella + children (or separate standalones).
+- Put implementation detail dumps in an umbrella body — children own Design/Acceptance for their concern.
+- Duplicate the RFC index as a `README.md` under `.spec/` or `rfc/`.
 - Put task checklists inside an active RFC body — they belong in TASK_TRACKING.md only.
-- Leave ROADMAP status and RFC header status disagreeing after any status change — `advance` exists precisely to prevent this.
-- Move a file into `completed/`/`rejected/` without first setting its status via `advance` — `archive` refuses to move a file whose status isn't in `Implemented`/`Rejected`/`Superseded`.
+- Leave ROADMAP status and RFC header status disagreeing — use `advance`.
+- Move a file into `completed/`/`rejected/` without `advance` first — `archive` refuses non-archivable statuses.
+- Reopen a closed umbrella for new work — new child or new umbrella instead.
 
 ## Setup
 

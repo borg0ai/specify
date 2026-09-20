@@ -12,7 +12,9 @@ Also packaged as an [agent skill](https://github.com/vercel-labs/skills) (`SKILL
 - **`TASK_TRACKING.md`** — the task board: one line per RFC linking to its concrete work items.
 - **`rfc/NNNN-slug.md`** — the actual spec body, with a `**Status:**` header line and a `## Summary` section. Terminal-status RFCs (`Implemented`, `Rejected`, `Superseded`) live under `rfc/completed/` or `rfc/rejected/`.
 
-Every command reads and writes these three pieces together in one pass, so they can never drift out of sync the way hand-editing does (e.g. "ROADMAP says Approved, RFC header still says Draft"). The layout is always `.spec/` — `init` scaffolds it if it doesn't exist yet. `sync-check` is the pre-commit gate: it fails if an RFC has no ROADMAP row, or if an id exists both as active and archived at once.
+Every command reads and writes these three pieces together in one pass, so they can never drift out of sync the way hand-editing does (e.g. "ROADMAP says Approved, RFC header still says Draft"). The layout is always `.spec/` — `init` scaffolds it if it doesn't exist yet. `sync-check` is the pre-commit gate: it fails if an RFC has no ROADMAP row, if an id exists both as active and archived at once, or if umbrella/child Parent↔Children links disagree.
+
+**Scope rule:** one RFC = one concern. Multi-concern themes use `deliver --umbrella` plus `deliver --parent <id>` children — `validate` enforces the mutual links.
 
 ## Install
 
@@ -29,12 +31,14 @@ npx skills add borg0ai/specify -a codex -a opencode -a claude-code -a antigravit
 ## Commands
 
 ```bash
-specify init                                   # locate the tree, print next RFC id
-specify validate <rfc-file>                    # check one RFC's format + status consistency
-specify deliver <id> <slug> <title>            # create RFC + ROADMAP row + TASK_TRACKING line
+specify init                                   # locate or scaffold .spec/, print next RFC id
+specify validate <rfc-file>                    # schema + ROADMAP + umbrella/child links
+specify deliver <id> <slug> <title>            # standalone RFC + ROADMAP + TASK_TRACKING
+specify deliver <id> <slug> <title> --umbrella # umbrella template
+specify deliver <id> <slug> <title> --parent N # child; link both ways to umbrella N
 specify advance <id> <new-status>              # update status in RFC header + ROADMAP row
-specify archive <id>                           # move an Implemented/Rejected/Superseded RFC
-specify sync-check                             # verify all three files agree (pre-commit gate)
+specify archive <id>                           # move Implemented/Rejected/Superseded RFC
+specify sync-check                             # ROADMAP/rfc + umbrella link consistency
 ```
 
 Add `--json` for machine-readable output, `--root <dir>` to point at a repo other than the cwd.

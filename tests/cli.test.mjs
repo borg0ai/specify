@@ -143,3 +143,159 @@ test("sync-check flags an RFC file with no ROADMAP index row", async () => {
   assert.ok(result.errors.some((e) => e.includes("0099")));
   await rm(dir, { recursive: true, force: true });
 });
+
+test("deliver --umbrella writes Type marker, Children table, and ROADMAP (Umbrella) suffix", async () => {
+  const dir = await makeFixture();
+  const result = await run(["deliver", "0002", "theme", "Theme Work", "--umbrella"], dir);
+  assert.equal(result.ok, true);
+  assert.equal(result.role, "umbrella");
+  const rfc = await readFile(path.join(dir, ".spec", "rfc", "0002-theme.md"), "utf8");
+  assert.match(rfc, /\*\*Type:\*\* Umbrella/);
+  assert.match(rfc, /## Children/);
+  const roadmap = await readFile(path.join(dir, ".spec", "ROADMAP.md"), "utf8");
+  assert.match(roadmap, /\(Umbrella\)/);
+  const validated = await run(["validate", ".spec/rfc/0002-theme.md"], dir);
+  assert.equal(validated.ok, true, JSON.stringify(validated.errors));
+  assert.ok(validated.warnings.some((w) => w.includes("empty Children")));
+  await rm(dir, { recursive: true, force: true });
+});
+
+test("deliver --parent links child both ways and validate accepts the pair", async () => {
+  const dir = await makeFixture();
+  await run(["deliver", "0002", "theme", "Theme Work", "--umbrella"], dir);
+  const child = await run(["deliver", "0003", "one-fix", "One Fix", "--parent", "0002"], dir);
+  assert.equal(child.ok, true);
+  assert.equal(child.role, "child");
+  assert.equal(child.parentId, "0002");
+
+  const childBody = await readFile(path.join(dir, ".spec", "rfc", "0003-one-fix.md"), "utf8");
+  assert.match(childBody, /\*\*Parent:\*\* \[0002\]/);
+  const umbrella = await readFile(path.join(dir, ".spec", "rfc", "0002-theme.md"), "utf8");
+  assert.match(umbrella, /\[0003\]\(/);
+
+  const vChild = await run(["validate", ".spec/rfc/0003-one-fix.md"], dir);
+  assert.equal(vChild.ok, true, JSON.stringify(vChild.errors));
+  assert.equal(vChild.role, "child");
+  const vParent = await run(["validate", ".spec/rfc/0002-theme.md"], dir);
+  assert.equal(vParent.ok, true, JSON.stringify(vParent.errors));
+  assert.equal(vParent.role, "umbrella");
+  await rm(dir, { recursive: true, force: true });
+});
+
+test("deliver --parent rejects missing or non-umbrella parent", async () => {
+  const dir = await makeFixture();
+  const missing = await run(["deliver", "0002", "x", "X", "--parent", "0099"], dir);
+  assert.equal(missing.ok, false);
+  assert.ok(missing.errors.some((e) => e.includes("0099")));
+
+  await run(["deliver", "0002", "plain", "Plain"], dir);
+  const notUmbrella = await run(["deliver", "0003", "y", "Y", "--parent", "0002"], dir);
+  assert.equal(notUmbrella.ok, false);
+  assert.ok(notUmbrella.errors.some((e) => /not marked Umbrella/i.test(e)));
+  await rm(dir, { recursive: true, force: true });
+});
+
+test("validate errors when child Parent and umbrella Children disagree", async () => {
+  const dir = await makeFixture();
+  await run(["deliver", "0002", "theme", "Theme", "--umbrella"], dir);
+  await run(["deliver", "0003", "one", "One", "--parent", "0002"], dir);
+  // Break back-link: remove Parent from child
+  const childPath = path.join(dir, ".spec", "rfc", "0003-one.md");
+  const broken = (await readFile(childPath, "utf8")).replace(/\*\*Parent:\*\*[^\n]+\n\n/, "");
+  await writeFile(childPath, broken, "utf8");
+  const fromUmbrella = await run(["validate", ".spec/rfc/0002-theme.md"], dir);
+  assert.equal(fromUmbrella.ok, false);
+  assert.ok(fromUmbrella.errors.some((e) => /Parent is \(missing\)/.test(e)));
+  await rm(dir, { recursive: true, force: true });
+});
+
+test("isUmbrella ignores prose that quotes **Type:** Umbrella outside the header", async () => {
+  const dir = await makeFixture();
+  await writeFile(
+    path.join(dir, ".spec", "rfc", "0002-childish.md"),
+    `# RFC 0002: Mentions umbrella syntax (child of 0001)
+
+**Status:** Draft
+
+**Parent:** [0001](0001-first.md)
+
+## Summary
+
+Documents how authors hand-edit \`**Type:** Umbrella\` in prose.
+
+## Problem
+
+P.
+
+## Goals
+
+G.
+
+## Acceptance
+
+A.
+`,
+  );
+  // Parent 0001 is not umbrella and does not list 0002 — expect parent-link errors, NOT "both roles"
+  const result = await run(["validate", ".spec/rfc/0002-childish.md"], dir);
+  assert.ok(!result.errors.some((e) => /pick one role/i.test(e)), JSON.stringify(result.errors));
+  assert.equal(result.role, "child");
+  await rm(dir, { recursive: true, force: true });
+});
+
+test("advance does not corrupt ROADMAP title that contains a status word", async () => {
+  const dir = await makeFixture();
+  await run(["deliver", "0002", "draft-mode", "Draft Mode for Approved Content"], dir);
+  const before = await readFile(path.join(dir, ".spec", "ROADMAP.md"), "utf8");
+  assert.match(before, /Draft Mode for Approved Content/);
+  assert.match(before, /\|\s*Draft\s*\|/);
+
+  const advanced = await run(["advance", "0002", "Approved"], dir);
+  assert.equal(advanced.ok, true);
+  const after = await readFile(path.join(dir, ".spec", "ROADMAP.md"), "utf8");
+  assert.match(after, /Draft Mode for Approved Content/);
+  assert.doesNotMatch(after, /Approved Mode/);
+  assert.match(after, /\|\s*0002\s*\|.*\|\s*Approved\s*\|/);
+  await rm(dir, { recursive: true, force: true });
+});
+
+test("deliver sanitizes titles that would break markdown links or table rows", async () => {
+  const dir = await makeFixture();
+  const result = await run(
+    ["deliver", "0002", "weird-title", "Break] link) and | pipe\nand newline"],
+    dir,
+  );
+  assert.equal(result.ok, true, JSON.stringify(result.errors));
+  const roadmap = await readFile(path.join(dir, ".spec", "ROADMAP.md"), "utf8");
+  const dataRows = roadmap.split("\n").filter((l) => /^\|\s*0002\s*\|/.test(l));
+  assert.equal(dataRows.length, 1, roadmap);
+  assert.match(dataRows[0], /\|\s*0002\s*\|\s*\[[^\]]+\]\([^)]+\)\s*\|\s*Draft\s*\|/);
+  assert.doesNotMatch(dataRows[0], /\]\s*link/);
+  assert.doesNotMatch(roadmap, /\n\|[^\n]*\|[^\n]*\|[^\n]*\|\n\|[^\n]*pipe/);
+  const rfc = await readFile(path.join(dir, ".spec", "rfc", "0002-weird-title.md"), "utf8");
+  assert.doesNotMatch(rfc, /Break\]/);
+  await rm(dir, { recursive: true, force: true });
+});
+
+test("validate status probe ignores status words in prose near the id", async () => {
+  const dir = await makeFixture();
+  // Fixture ROADMAP has prose; rewrite to mention Draft near id while Status column says Draft matching header
+  await writeFile(
+    path.join(dir, ".spec", "ROADMAP.md"),
+    `# ROADMAP
+
+Note: Draft proposals live below. See historical Approved work.
+
+| RFC | Title | Status |
+|-----|-------|--------|
+| 0001 | [First](rfc/0001-first.md) | Draft |
+`,
+  );
+  const result = await run(["validate", ".spec/rfc/0001-first.md"], dir);
+  assert.equal(result.ok, true, JSON.stringify(result.errors));
+  assert.ok(
+    !result.warnings.some((w) => /status mismatch/i.test(w)),
+    JSON.stringify(result.warnings),
+  );
+  await rm(dir, { recursive: true, force: true });
+});
