@@ -8,7 +8,7 @@ metadata:
 
 # Specify
 
-A CLI (`bin/specify.mjs`) that reads and writes the three-file RFC convention under `.spec/`: `.spec/ROADMAP.md` (index), `.spec/TASK_TRACKING.md` (task board), `.spec/rfc/NNNN-slug.md` (spec bodies, with `completed/` and `rejected/` archive subdirs). This is the only layout `specify` recognizes — it does not look for `docs/rfc/` or root-level `ROADMAP.md`. If `.spec/` doesn't exist yet, `init` scaffolds it.
+A CLI (`scripts/specify.mjs`) that reads and writes the three-file RFC convention under `.spec/`: `.spec/ROADMAP.md` (index), `.spec/TASK_TRACKING.md` (task board), `.spec/rfc/NNNN-slug.md` (spec bodies, with `completed/` and `rejected/` archive subdirs). This is the only layout `specify` recognizes — it does not look for `docs/rfc/` or root-level `ROADMAP.md`. If `.spec/` doesn't exist yet, `init` scaffolds it.
 
 Every command exits non-zero on failure. Never report success from a non-zero exit, and never hand-edit ROADMAP/TASK_TRACKING/RFC files when a command exists for the operation — the commands keep the three files in sync in one pass, which manual edits reliably drift out of.
 
@@ -28,14 +28,14 @@ When a theme spans multiple concerns, use an **umbrella + children**:
 ## Commands
 
 ```bash
-node bin/specify.mjs init                                      # locate or scaffold .spec/, print next RFC id
-node bin/specify.mjs validate <rfc-file>                       # schema + ROADMAP + umbrella/child links
-node bin/specify.mjs deliver <id> <slug> <title>               # standalone RFC + ROADMAP + TASK_TRACKING
-node bin/specify.mjs deliver <id> <slug> <title> --umbrella    # umbrella template + Type marker
-node bin/specify.mjs deliver <id> <slug> <title> --parent NNNN # child template; link both ways
-node bin/specify.mjs advance <id> <new-status>                 # update status in RFC header + ROADMAP row
-node bin/specify.mjs archive <id>                              # move Implemented/Rejected/Superseded RFC
-node bin/specify.mjs sync-check                                # ROADMAP/TASK_TRACKING/rfc + umbrella links
+node scripts/specify.mjs init                                      # locate or scaffold .spec/, print next RFC id
+node scripts/specify.mjs validate <rfc-file>                       # schema + ROADMAP + umbrella/child links
+node scripts/specify.mjs deliver <id> <slug> <title>               # standalone RFC + ROADMAP + TASK_TRACKING
+node scripts/specify.mjs deliver <id> <slug> <title> --umbrella    # umbrella template + Type marker
+node scripts/specify.mjs deliver <id> <slug> <title> --parent NNNN # child template; link both ways
+node scripts/specify.mjs advance <id> <new-status>                 # update status in RFC header + ROADMAP row
+node scripts/specify.mjs archive <id>                              # move Implemented/Rejected/Superseded RFC
+node scripts/specify.mjs sync-check                                # ROADMAP/TASK_TRACKING/rfc + umbrella links
 ```
 
 Add `--json` for machine-readable output, `--root <dir>` to point at a repo other than the cwd.

@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 
 const execFileP = promisify(execFile);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const CLI = path.join(__dirname, "..", "specify", "bin", "specify.mjs");
+const CLI = path.join(__dirname, "..", "specify", "scripts", "specify.mjs");
 
 async function run(args, cwd) {
   try {

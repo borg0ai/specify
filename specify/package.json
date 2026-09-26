@@ -5,13 +5,13 @@
   "license": "MIT",
   "type": "module",
   "bin": {
-    "specify": "./bin/specify.mjs"
+    "specify": "./scripts/specify.mjs"
   },
   "engines": {
     "node": ">=22"
   },
   "files": [
-    "bin",
+    "scripts",
     "schemas",
     "references",
     "SKILL.md"

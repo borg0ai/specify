@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "..");
 const skillRoot = path.join(repoRoot, "specify");
-const cli = path.join(skillRoot, "bin", "specify.mjs");
+const cli = path.join(skillRoot, "scripts", "specify.mjs");
 
 function requireAbsent(relative) {
   if (fs.existsSync(path.join(skillRoot, relative))) {
@@ -39,7 +39,8 @@ try {
   requireAbsent("test");
   requireAbsent("tests");
   requireAbsent("package-lock.json");
-  requireAbsent("scripts");
+  requireAbsent("scripts/release.mjs");
+  requireAbsent("scripts/package-smoke.mjs");
 
   const pkg = JSON.parse(fs.readFileSync(path.join(skillRoot, "package.json"), "utf8"));
   const release = JSON.parse(fs.readFileSync(path.join(skillRoot, "skill-release.json"), "utf8"));
