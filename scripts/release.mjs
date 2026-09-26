@@ -7,7 +7,8 @@ import { promisify } from "node:util";
 import path from "node:path";
 
 const execFileP = promisify(execFile);
-const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
+const repoRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
+const root = path.join(repoRoot, "specify");
 
 async function sh(cmd, args) {
   const { stdout } = await execFileP(cmd, args, { cwd: root });

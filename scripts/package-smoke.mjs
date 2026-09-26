@@ -39,6 +39,7 @@ try {
   requireAbsent("test");
   requireAbsent("tests");
   requireAbsent("package-lock.json");
+  requireAbsent("scripts");
 
   const pkg = JSON.parse(fs.readFileSync(path.join(skillRoot, "package.json"), "utf8"));
   const release = JSON.parse(fs.readFileSync(path.join(skillRoot, "skill-release.json"), "utf8"));

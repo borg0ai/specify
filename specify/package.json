@@ -15,8 +15,5 @@
     "schemas",
     "references",
     "SKILL.md"
-  ],
-  "scripts": {
-    "release": "node scripts/release.mjs"
-  }
+  ]
 }
