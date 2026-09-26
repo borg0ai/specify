@@ -3,9 +3,12 @@ import { readFile, writeFile, mkdir, rename } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
+import { listBrokenRfcLinks, replaceLinksPointingAt, retargetRelativeLinks } from "./lib/markdown-links.mjs";
+import { insertTaskLine, markTaskChecked, taskBoardErrors } from "./lib/task-board.mjs";
 
 const STATUSES = ["Draft", "Under Review", "Approved", "Implemented", "Rejected", "Superseded"];
 const ARCHIVE_STATUSES = { Implemented: "completed", Rejected: "rejected", Superseded: "rejected" };
+const ARCHIVE_DIRS = ["completed", "rejected"];
 
 /** Marker written into RFC bodies and ROADMAP titles for umbrella RFCs. */
 const UMBRELLA_TYPE_LINE = "**Type:** Umbrella";
@@ -22,8 +25,8 @@ Commands:
                                 [--umbrella]  umbrella template + Type marker
                                 [--parent <id>]  child template, Parent link, append to umbrella Children
   advance <id> <status>         Move an RFC to a new status, syncing ROADMAP + RFC header
-  archive <id>                  Move an Implemented/Rejected/Superseded RFC to its archive dir
-  sync-check                    Verify ROADMAP, TASK_TRACKING, and rfc/ agree (pre-commit gate)
+  archive <id>                  Move an Implemented/Rejected/Superseded RFC, rewrite links, check its task
+  sync-check                    Verify ROADMAP links resolve, TASK_TRACKING lines, and rfc/ agree
 `);
 }
 
@@ -544,8 +547,11 @@ async function cmdDeliver(layout, id, slug, title, options = {}) {
   await writeFile(p.roadmap, roadmapText + (roadmapText.endsWith("\n") ? "" : "\n") + indexRow, "utf8");
 
   const tasksText = await readIfExists(p.tasks);
-  const taskLine = `- [ ] Implement RFC ${id}: ${roadmapTitle} (RFC ${id})\n`;
-  await writeFile(p.tasks, tasksText + (tasksText.endsWith("\n") ? "" : "\n") + taskLine, "utf8");
+  await writeFile(
+    p.tasks,
+    insertTaskLine(tasksText, { id, title: roadmapTitle, parentId }),
+    "utf8",
+  );
 
   return {
     ok: true,
@@ -601,8 +607,39 @@ async function cmdArchive(layout, id) {
   const destDir = path.join(p.rfcDir, archiveSub);
   await mkdir(destDir, { recursive: true });
   const dest = path.join(destDir, path.basename(rfcPath));
+  const oldDir = path.dirname(rfcPath);
   await rename(rfcPath, dest);
+  const moved = await readFile(dest, "utf8");
+  const retargeted = retargetRelativeLinks(moved, oldDir, destDir);
+  if (retargeted !== moved) await writeFile(dest, retargeted, "utf8");
+  await rewriteInboundMarkdownLinks(layout.docDir, rfcPath, dest);
+
+  const tasksText = await readIfExists(p.tasks);
+  const marked = markTaskChecked(tasksText, id);
+  if (marked !== tasksText) await writeFile(p.tasks, marked, "utf8");
+
   return { ok: true, from: rfcPath, to: dest, status: statusWord };
+}
+
+/** Markdown files under `.spec/`, including ROADMAP and TASK_TRACKING. */
+async function listDocMarkdown(docDir) {
+  const { glob } = await import("node:fs/promises");
+  const files = [];
+  for await (const entry of glob("**/*.md", { cwd: docDir })) {
+    files.push(path.join(docDir, entry));
+  }
+  return files;
+}
+
+/** Update other `.spec/` markdown so links that targeted `fromAbs` follow `destAbs`. */
+async function rewriteInboundMarkdownLinks(docDir, fromAbs, destAbs) {
+  const dest = path.normalize(destAbs);
+  for (const file of await listDocMarkdown(docDir)) {
+    if (path.normalize(file) === dest) continue;
+    const text = await readFile(file, "utf8");
+    const updated = replaceLinksPointingAt(text, file, fromAbs, destAbs);
+    if (updated !== text) await writeFile(file, updated, "utf8");
+  }
 }
 
 async function cmdSyncCheck(layout) {
@@ -630,14 +667,32 @@ async function cmdSyncCheck(layout) {
     }
   }
 
-  for (const dir of ["completed", "rejected"]) {
+  const archivedEntries = [];
+  for (const dir of ARCHIVE_DIRS) {
     const archiveDir = path.join(p.rfcDir, dir);
     if (!existsSync(archiveDir)) continue;
     for await (const entry of glob("*.md", { cwd: archiveDir })) {
       const m = entry.match(/^([0-9]{4})-/);
-      if (m && activeIds.includes(m[1])) {
+      if (!m) continue;
+      archivedEntries.push({ id: m[1], archived: true });
+      if (activeIds.includes(m[1])) {
         errors.push(`RFC ${m[1]} appears both active and archived (${dir}/)`);
       }
+    }
+  }
+
+  const tasksText = await readIfExists(p.tasks);
+  const taskEntries = [
+    ...activeIds.map((id) => ({ id, archived: false })),
+    ...archivedEntries,
+  ];
+  errors.push(...taskBoardErrors(tasksText, taskEntries));
+
+  for (const file of await listDocMarkdown(layout.docDir)) {
+    const text = await readFile(file, "utf8");
+    const relative = path.relative(layout.root, file);
+    for (const link of listBrokenRfcLinks(text, file)) {
+      errors.push(`Broken RFC link in ${relative}: ${link}`);
     }
   }
 

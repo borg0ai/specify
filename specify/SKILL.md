@@ -25,6 +25,16 @@ When a theme spans multiple concerns, use an **umbrella + children**:
 
 `validate` and `sync-check` enforce mutual links: every listed child must declare that parent; every `**Parent:**` must point at an Umbrella that lists the child. An RFC cannot be both umbrella and child.
 
+## Where the CLI lives
+
+`specify` is a skill, not a per-project dependency — it is never expected to live inside the project whose RFCs it manages. Once installed (`npx skills add borg0ai/specify`, project-local or `-g` global), the CLI is at `<install-location>/specify/scripts/specify.mjs` — for example `~/.claude/skills/specify/scripts/specify.mjs` for a global install. To manage a project other than `specify` itself, invoke that installed script with `--root <target-project-path>`:
+
+```bash
+node ~/.claude/skills/specify/scripts/specify.mjs init --root /path/to/other-project --json
+```
+
+The `node scripts/specify.mjs ...` form in the Commands section below is relative to wherever the CLI is actually installed, not to the project being managed. Do not search the target project for `scripts/specify.mjs` — it won't be there unless that project is `specify`'s own dev checkout.
+
 ## Commands
 
 ```bash
@@ -34,18 +44,20 @@ node scripts/specify.mjs deliver <id> <slug> <title>               # standalone 
 node scripts/specify.mjs deliver <id> <slug> <title> --umbrella    # umbrella template + Type marker
 node scripts/specify.mjs deliver <id> <slug> <title> --parent NNNN # child template; link both ways
 node scripts/specify.mjs advance <id> <new-status>                 # update status in RFC header + ROADMAP row
-node scripts/specify.mjs archive <id>                              # move Implemented/Rejected/Superseded RFC
-node scripts/specify.mjs sync-check                                # ROADMAP/TASK_TRACKING/rfc + umbrella links
+node scripts/specify.mjs archive <id>                              # move archivable RFC, rewrite links, check its task
+node scripts/specify.mjs sync-check                                # ROADMAP links, task lines, rfc files, umbrella links
 ```
 
 Add `--json` for machine-readable output, `--root <dir>` to point at a repo other than the cwd.
 
 ## Workflow
 
-1. **Starting work:** run `init` for the next id. If the theme is multi-concern, deliver an `--umbrella` first, then one `--parent <id>` child per concern. If it is a single concern, deliver a standalone RFC (no flags). Fill TODO sections before treating the RFC as authored.
+**RFC before code, no exceptions.** Never edit implementation files for a change this convention covers until its RFC is delivered. "I'll write the RFC after" or "this is small enough to skip" are not valid — `deliver` takes seconds and the same discipline applies to a one-line fix as to a multi-file feature.
+
+1. **Starting work:** run `init` for the next id, then `deliver` the RFC before touching any other file. If the theme is multi-concern, deliver an `--umbrella` first, then one `--parent <id>` child per concern. If it is a single concern, deliver a standalone RFC (no flags). Fill TODO sections before treating the RFC as authored, then implement.
 2. **Before treating any RFC edit as done:** run `validate <file>`. Fix every reported error; recommended-section warnings are informational — use judgment; do not invent empty sections to silence them.
 3. **Changing status:** run `advance <id> <status>` — updates RFC header and ROADMAP together.
-4. **Implemented/Rejected/Superseded:** after `advance`, if `needsArchive: true`, run `archive <id>`.
+4. **Implemented/Rejected/Superseded:** after `advance`, if `needsArchive: true`, run `archive <id>`. Archive moves the file, retargets links inside it, rewrites other `.spec/` markdown links that pointed at the old path, and checks that id's TASK_TRACKING box. A fully checked `## Active` block is moved under `## Done`.
 5. **Before a commit that touches RFC files:** run `sync-check`.
 
 ## Status enum
@@ -62,6 +74,13 @@ Add `--json` for machine-readable output, `--root <dir>` to point at a repo othe
 - ROADMAP nearby-status mismatch → warning (hint only).
 - **Umbrella/child:** `**Type:** Umbrella` (or title `(Umbrella)`) with empty Children → warning; listed child missing file or wrong/missing Parent → error; `**Parent:**` without umbrella parent or without back-link in Children → error; both umbrella and parent on one file → error.
 
+## What sync-check actually checks
+
+- Every active `rfc/NNNN-*.md` has a ROADMAP link, and the same id is not both active and archived.
+- Active umbrella/child links match (same rules as `validate`).
+- Every markdown link to an `NNNN-slug.md` file under `.spec/` resolves on disk.
+- Every RFC file id has a TASK_TRACKING checkbox line. Archived ids must be `[x]`.
+
 ## Do not
 
 - Bundle multiple concerns into one RFC — split into umbrella + children (or separate standalones).
@@ -70,6 +89,7 @@ Add `--json` for machine-readable output, `--root <dir>` to point at a repo othe
 - Put task checklists inside an active RFC body — they belong in TASK_TRACKING.md only.
 - Leave ROADMAP status and RFC header status disagreeing — use `advance`.
 - Move a file into `completed/`/`rejected/` without `advance` first — `archive` refuses non-archivable statuses.
+- Hand-rewrite ROADMAP or Children links after `archive` — the command retargets them.
 - Reopen a closed umbrella for new work — new child or new umbrella instead.
 
 ## Setup

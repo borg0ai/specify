@@ -11,3 +11,10 @@
   - [x] RFC 0007: Document one-concern and umbrella lifecycle in SKILL.md
   - [x] RFC 0008: deliver --umbrella / --parent + templates
   - [x] RFC 0009: validate umbrella/child link consistency
+- [x] Implement RFC 0010: Finish-path sync for archive links and task board (Umbrella) (RFC 0010)
+  - [x] Implement RFC 0011: Rewrite markdown links when archive moves an RFC (child of 0010) (RFC 0011)
+  - [x] Implement RFC 0012: Fail sync-check when an RFC markdown link does not resolve (child of 0010) (RFC 0012)
+  - [x] Implement RFC 0013: Nest child tasks on deliver and check them on archive (child of 0010) (RFC 0013)
+- [x] Implement RFC 0014: Document installed-skill CLI path vs dev checkout in SKILL.md (RFC 0014)
+
+

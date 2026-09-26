@@ -23,8 +23,11 @@ async function run(args, cwd) {
 async function makeFixture() {
   const dir = await mkdtemp(path.join(tmpdir(), "specify-test-"));
   await mkdir(path.join(dir, ".spec", "rfc", "completed"), { recursive: true });
-  await writeFile(path.join(dir, ".spec", "ROADMAP.md"), "# ROADMAP\n\nSee [0001](.spec/rfc/0001-first.md).\n");
-  await writeFile(path.join(dir, ".spec", "TASK_TRACKING.md"), "# TASK_TRACKING\n");
+  await writeFile(path.join(dir, ".spec", "ROADMAP.md"), "# ROADMAP\n\nSee [0001](rfc/0001-first.md).\n");
+  await writeFile(
+    path.join(dir, ".spec", "TASK_TRACKING.md"),
+    "# TASK_TRACKING\n\n- [ ] RFC 0001: First\n",
+  );
   await writeFile(
     path.join(dir, ".spec", "rfc", "0001-first.md"),
     "# RFC 0001: First\n\n**Status:** Draft\n\n## Summary\n\nTest.\n",
@@ -126,8 +129,12 @@ test("advance then archive moves RFC to completed/ and sync-check stops flagging
   await run(["advance", "0002", "Implemented"], dir);
   const archived = await run(["archive", "0002"], dir);
   assert.equal(archived.ok, true);
+  const roadmap = await readFile(path.join(dir, ".spec", "ROADMAP.md"), "utf8");
+  assert.match(roadmap, /rfc\/completed\/0002-second-rfc\.md/);
+  const tasks = await readFile(path.join(dir, ".spec", "TASK_TRACKING.md"), "utf8");
+  assert.match(tasks, /- \[x\][^\n]*RFC 0002/);
   const sync = await run(["sync-check"], dir);
-  assert.equal(sync.ok, true);
+  assert.equal(sync.ok, true, JSON.stringify(sync.errors));
   assert.ok(!sync.activeIds.includes("0002"));
   await rm(dir, { recursive: true, force: true });
 });
@@ -297,5 +304,59 @@ Note: Draft proposals live below. See historical Approved work.
     !result.warnings.some((w) => /status mismatch/i.test(w)),
     JSON.stringify(result.warnings),
   );
+  await rm(dir, { recursive: true, force: true });
+});
+
+test("archive rewrites ROADMAP and umbrella links to the moved RFC", async () => {
+  const dir = await makeFixture();
+  await run(["deliver", "0002", "theme", "Theme", "--umbrella"], dir);
+  await run(["deliver", "0003", "one", "One", "--parent", "0002"], dir);
+  await run(["advance", "0003", "Implemented"], dir);
+  const archived = await run(["archive", "0003"], dir);
+  assert.equal(archived.ok, true, JSON.stringify(archived.errors));
+
+  const roadmap = await readFile(path.join(dir, ".spec", "ROADMAP.md"), "utf8");
+  assert.match(roadmap, /rfc\/completed\/0003-one\.md/);
+  const umbrella = await readFile(path.join(dir, ".spec", "rfc", "0002-theme.md"), "utf8");
+  assert.match(umbrella, /completed\/0003-one\.md/);
+  const child = await readFile(path.join(dir, ".spec", "rfc", "completed", "0003-one.md"), "utf8");
+  assert.match(child, /\]\(\.\.\/0002-theme\.md\)/);
+  const sync = await run(["sync-check"], dir);
+  assert.equal(sync.ok, true, JSON.stringify(sync.errors));
+  await rm(dir, { recursive: true, force: true });
+});
+
+test("sync-check fails when a ROADMAP RFC link does not resolve", async () => {
+  const dir = await makeFixture();
+  await writeFile(
+    path.join(dir, ".spec", "ROADMAP.md"),
+    "# ROADMAP\n\nSee [0001](rfc/0001-first.md) and [0098](rfc/0098-missing.md).\n",
+  );
+  const result = await run(["sync-check"], dir);
+  assert.equal(result.ok, false);
+  assert.ok(result.errors.some((e) => e.includes("0098-missing.md")));
+  await rm(dir, { recursive: true, force: true });
+});
+
+test("deliver nests a child task and archive promotes a fully checked block to Done", async () => {
+  const dir = await makeFixture();
+  await run(["deliver", "0002", "theme", "Theme", "--umbrella"], dir);
+  await run(["deliver", "0003", "one", "One", "--parent", "0002"], dir);
+  const open = await readFile(path.join(dir, ".spec", "TASK_TRACKING.md"), "utf8");
+  assert.match(open, /## Active\n\n- \[ \] Implement RFC 0002:[\s\S]*\n  - \[ \] Implement RFC 0003:/);
+
+  await run(["advance", "0003", "Implemented"], dir);
+  await run(["archive", "0003"], dir);
+  const childDone = await readFile(path.join(dir, ".spec", "TASK_TRACKING.md"), "utf8");
+  assert.match(childDone, /## Active[\s\S]*- \[ \] Implement RFC 0002:[\s\S]*\n  - \[x\] Implement RFC 0003:/);
+  assert.doesNotMatch(childDone, /## Done[\s\S]*RFC 0003/);
+
+  await run(["advance", "0002", "Implemented"], dir);
+  await run(["archive", "0002"], dir);
+  const bothDone = await readFile(path.join(dir, ".spec", "TASK_TRACKING.md"), "utf8");
+  assert.match(bothDone, /## Done[\s\S]*- \[x\] Implement RFC 0002:[\s\S]*\n  - \[x\] Implement RFC 0003:/);
+  assert.doesNotMatch(bothDone, /## Active[\s\S]*RFC 0002/);
+  const sync = await run(["sync-check"], dir);
+  assert.equal(sync.ok, true, JSON.stringify(sync.errors));
   await rm(dir, { recursive: true, force: true });
 });
