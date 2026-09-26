@@ -17,6 +17,8 @@
   - [x] Implement RFC 0013: Nest child tasks on deliver and check them on archive (child of 0010) (RFC 0013)
 - [x] Implement RFC 0014: Document installed-skill CLI path vs dev checkout in SKILL.md (RFC 0014)
 - [x] Implement RFC 0015: SKILL.md must not hardcode an install path for the CLI (RFC 0015)
+- [x] Implement RFC 0016: Add approval-gated implementation workflow to SKILL.md (RFC 0016)
+
 
 
 

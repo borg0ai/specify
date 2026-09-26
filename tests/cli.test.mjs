@@ -53,6 +53,12 @@ test("init scaffolds .spec/rfc, ROADMAP.md, and TASK_TRACKING.md in an empty rep
   assert.deepEqual(result.existingIds, []);
   await readFile(path.join(dir, ".spec", "ROADMAP.md"), "utf8");
   await readFile(path.join(dir, ".spec", "TASK_TRACKING.md"), "utf8");
+  for (const sub of ["completed", "rejected", "pending"]) {
+    await mkdir(path.join(dir, ".spec", "rfc", sub), { recursive: false }).then(
+      () => assert.fail(`init should have already scaffolded .spec/rfc/${sub}/`),
+      (err) => assert.equal(err.code, "EEXIST", `.spec/rfc/${sub}/ should already exist`),
+    );
+  }
 
   const deliverResult = await run(["deliver", "0001", "first", "First RFC"], dir);
   assert.equal(deliverResult.ok, true);
@@ -133,6 +139,23 @@ test("advance then archive moves RFC to completed/ and sync-check stops flagging
   assert.match(roadmap, /rfc\/completed\/0002-second-rfc\.md/);
   const tasks = await readFile(path.join(dir, ".spec", "TASK_TRACKING.md"), "utf8");
   assert.match(tasks, /- \[x\][^\n]*RFC 0002/);
+  const sync = await run(["sync-check"], dir);
+  assert.equal(sync.ok, true, JSON.stringify(sync.errors));
+  assert.ok(!sync.activeIds.includes("0002"));
+  await rm(dir, { recursive: true, force: true });
+});
+
+test("advance then archive moves RFC to pending/ when status is Pending", async () => {
+  const dir = await makeFixture();
+  await run(["deliver", "0002", "second-rfc", "Second RFC"], dir);
+  const advanced = await run(["advance", "0002", "Pending"], dir);
+  assert.equal(advanced.ok, true);
+  assert.equal(advanced.needsArchive, true);
+  const archived = await run(["archive", "0002"], dir);
+  assert.equal(archived.ok, true);
+  assert.match(archived.to, /[/\\]pending[/\\]0002-second-rfc\.md$/);
+  const roadmap = await readFile(path.join(dir, ".spec", "ROADMAP.md"), "utf8");
+  assert.match(roadmap, /rfc\/pending\/0002-second-rfc\.md/);
   const sync = await run(["sync-check"], dir);
   assert.equal(sync.ok, true, JSON.stringify(sync.errors));
   assert.ok(!sync.activeIds.includes("0002"));

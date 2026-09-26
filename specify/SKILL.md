@@ -8,7 +8,7 @@ metadata:
 
 # Specify
 
-A CLI (`scripts/specify.mjs`) that reads and writes the three-file RFC convention under `.spec/`: `.spec/ROADMAP.md` (index), `.spec/TASK_TRACKING.md` (task board), `.spec/rfc/NNNN-slug.md` (spec bodies, with `completed/` and `rejected/` archive subdirs). This is the only layout `specify` recognizes — it does not look for `docs/rfc/` or root-level `ROADMAP.md`. If `.spec/` doesn't exist yet, `init` scaffolds it.
+A CLI (`scripts/specify.mjs`) that reads and writes the three-file RFC convention under `.spec/`: `.spec/ROADMAP.md` (index), `.spec/TASK_TRACKING.md` (task board), `.spec/rfc/NNNN-slug.md` (spec bodies, with `completed/`, `rejected/`, and `pending/` archive subdirs). This is the only layout `specify` recognizes — it does not look for `docs/rfc/` or root-level `ROADMAP.md`. If `.spec/` doesn't exist yet, `init` scaffolds it.
 
 Every command exits non-zero on failure. Never report success from a non-zero exit, and never hand-edit ROADMAP/TASK_TRACKING/RFC files when a command exists for the operation — the commands keep the three files in sync in one pass, which manual edits reliably drift out of.
 
@@ -54,15 +54,19 @@ Add `--json` for machine-readable output, `--root <dir>` to point at a repo othe
 
 **RFC before code, no exceptions.** Never edit implementation files for a change this convention covers until its RFC is delivered. "I'll write the RFC after" or "this is small enough to skip" are not valid — `deliver` takes seconds and the same discipline applies to a one-line fix as to a multi-file feature.
 
-1. **Starting work:** run `init` for the next id, then `deliver` the RFC before touching any other file. If the theme is multi-concern, deliver an `--umbrella` first, then one `--parent <id>` child per concern. If it is a single concern, deliver a standalone RFC (no flags). Fill TODO sections before treating the RFC as authored, then implement.
-2. **Before treating any RFC edit as done:** run `validate <file>`. Fix every reported error; recommended-section warnings are informational — use judgment; do not invent empty sections to silence them.
-3. **Changing status:** run `advance <id> <status>` — updates RFC header and ROADMAP together.
-4. **Implemented/Rejected/Superseded:** after `advance`, if `needsArchive: true`, run `archive <id>`. Archive moves the file, retargets links inside it, rewrites other `.spec/` markdown links that pointed at the old path, and checks that id's TASK_TRACKING box. A fully checked `## Active` block is moved under `## Done`.
-5. **Before a commit that touches RFC files:** run `sync-check`.
+1. **Starting work:** run `init` for the next id, then `deliver` the RFC before touching any other file. If the theme is multi-concern, deliver an `--umbrella` first, then one `--parent <id>` child per concern. If it is a single concern, deliver a standalone RFC (no flags). Fill TODO sections before treating the RFC as authored.
+2. **Before implementing:** run `validate <file>` on the delivered RFC, then present a short plan — files/modules touched, approach — and wait for an explicit outcome before editing any implementation file. Do not start implementing on delivery alone; the RFC existing is not the same as the plan being approved. Three outcomes:
+   - **Approved:** proceed to step 3, then implement.
+   - **Rejected:** `advance <id> Rejected`, then `archive <id>` — moves the file to `.spec/rfc/rejected/`. Do not implement.
+   - **Pending:** `advance <id> Pending`, then `archive <id>` — moves the file to `.spec/rfc/pending/`. Used when the user's response is short of a clear approve/reject and work pauses. Do not implement.
+3. **Before treating any RFC edit as done:** run `validate <file>` again if the RFC body changed during planning. Fix every reported error; recommended-section warnings are informational — use judgment; do not invent empty sections to silence them.
+4. **Changing status:** run `advance <id> <status>` — updates RFC header and ROADMAP together.
+5. **Implemented/Rejected/Superseded:** after `advance`, if `needsArchive: true`, run `archive <id>`. Archive moves the file, retargets links inside it, rewrites other `.spec/` markdown links that pointed at the old path, and checks that id's TASK_TRACKING box. A fully checked `## Active` block is moved under `## Done`.
+6. **Before a commit that touches RFC files:** run `sync-check`.
 
 ## Status enum
 
-`Draft` → `Under Review` → `Approved` → `Implemented`, plus `Rejected` and `Superseded`. `Superseded` requires a "superseded by NNNN" reference somewhere in the RFC body.
+`Draft` → `Under Review` → `Approved` → `Implemented`, plus `Rejected`, `Superseded`, and `Pending`. `Superseded` requires a "superseded by NNNN" reference somewhere in the RFC body. `Implemented`, `Rejected`, `Superseded`, and `Pending` are archivable — `archive <id>` moves the file to `completed/`, `rejected/`, `rejected/`, and `pending/` respectively.
 
 ## What validate actually checks
 
@@ -88,7 +92,7 @@ Add `--json` for machine-readable output, `--root <dir>` to point at a repo othe
 - Duplicate the RFC index as a `README.md` under `.spec/` or `rfc/`.
 - Put task checklists inside an active RFC body — they belong in TASK_TRACKING.md only.
 - Leave ROADMAP status and RFC header status disagreeing — use `advance`.
-- Move a file into `completed/`/`rejected/` without `advance` first — `archive` refuses non-archivable statuses.
+- Move a file into `completed/`/`rejected/`/`pending/` without `advance` first — `archive` refuses non-archivable statuses.
 - Hand-rewrite ROADMAP or Children links after `archive` — the command retargets them.
 - Reopen a closed umbrella for new work — new child or new umbrella instead.
 

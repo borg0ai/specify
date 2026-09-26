@@ -6,9 +6,9 @@ import process from "node:process";
 import { listBrokenRfcLinks, replaceLinksPointingAt, retargetRelativeLinks } from "./lib/markdown-links.mjs";
 import { insertTaskLine, markTaskChecked, taskBoardErrors } from "./lib/task-board.mjs";
 
-const STATUSES = ["Draft", "Under Review", "Approved", "Implemented", "Rejected", "Superseded"];
-const ARCHIVE_STATUSES = { Implemented: "completed", Rejected: "rejected", Superseded: "rejected" };
-const ARCHIVE_DIRS = ["completed", "rejected"];
+const STATUSES = ["Draft", "Under Review", "Approved", "Implemented", "Rejected", "Superseded", "Pending"];
+const ARCHIVE_STATUSES = { Implemented: "completed", Rejected: "rejected", Superseded: "rejected", Pending: "pending" };
+const ARCHIVE_DIRS = ["completed", "rejected", "pending"];
 
 /** Marker written into RFC bodies and ROADMAP titles for umbrella RFCs. */
 const UMBRELLA_TYPE_LINE = "**Type:** Umbrella";
@@ -25,7 +25,7 @@ Commands:
                                 [--umbrella]  umbrella template + Type marker
                                 [--parent <id>]  child template, Parent link, append to umbrella Children
   advance <id> <status>         Move an RFC to a new status, syncing ROADMAP + RFC header
-  archive <id>                  Move an Implemented/Rejected/Superseded RFC, rewrite links, check its task
+  archive <id>                  Move an Implemented/Rejected/Superseded/Pending RFC, rewrite links, check its task
   sync-check                    Verify ROADMAP links resolve, TASK_TRACKING lines, and rfc/ agree
 `);
 }
@@ -121,10 +121,10 @@ function parseUmbrellaChildren(rfcText) {
   return [...new Set(ids)];
 }
 
-/** Resolve `NNNN-*.md` under rfcDir, completed/, or rejected/. */
+/** Resolve `NNNN-*.md` under rfcDir, completed/, rejected/, or pending/. */
 async function findRfcPathById(rfcDir, id) {
   const { glob } = await import("node:fs/promises");
-  const patterns = [`${id}-*.md`, `completed/${id}-*.md`, `rejected/${id}-*.md`];
+  const patterns = [`${id}-*.md`, `completed/${id}-*.md`, `rejected/${id}-*.md`, `pending/${id}-*.md`];
   for (const pattern of patterns) {
     for await (const entry of glob(pattern, { cwd: rfcDir })) {
       return path.join(rfcDir, entry);
@@ -336,6 +336,7 @@ async function cmdInit(layout, rootArg) {
     await mkdir(rfcDir, { recursive: true });
     await mkdir(path.join(rfcDir, "completed"), { recursive: true });
     await mkdir(path.join(rfcDir, "rejected"), { recursive: true });
+    await mkdir(path.join(rfcDir, "pending"), { recursive: true });
     await writeFile(roadmapPath, "# Roadmap\n\n| RFC | Title | Status |\n|-----|-------|--------|\n");
     await writeFile(tasksPath, "# Task Tracking\n");
     layout = { root, docDir: path.join(root, ".spec"), rfcDir };
@@ -433,7 +434,7 @@ async function cmdValidate(layout, rfcFile) {
     errors.push(`Status "${statusWord}" not in enum: ${STATUSES.join(", ")}`);
   }
   if (!title) errors.push("Missing H1 title line");
-  const isArchived = /[/\\](completed|rejected)[/\\]/.test(rfcFile);
+  const isArchived = /[/\\](completed|rejected|pending)[/\\]/.test(rfcFile);
 
   // Only "Summary" is universal across this project's RFCs (Problem/Goals/Design/Delivery/Acceptance
   // vary by author and era). Missing Summary is an error; missing recommended sections is a warning.
@@ -602,7 +603,7 @@ async function cmdArchive(layout, id) {
   const { statusWord } = parseRfcHeader(text);
   const archiveSub = ARCHIVE_STATUSES[statusWord];
   if (!archiveSub) {
-    return { ok: false, errors: [`Status "${statusWord}" is not archivable (must be Implemented, Rejected, or Superseded)`] };
+    return { ok: false, errors: [`Status "${statusWord}" is not archivable (must be Implemented, Rejected, Superseded, or Pending)`] };
   }
   const destDir = path.join(p.rfcDir, archiveSub);
   await mkdir(destDir, { recursive: true });

@@ -17,3 +17,4 @@
 | 0013 | [Nest child tasks on deliver and check them on archive (child of 0010)](rfc/completed/0013-task-board-on-deliver-archive.md) | Implemented |
 | 0014 | [Document installed-skill CLI path vs dev checkout in SKILL.md](rfc/completed/0014-document-installed-cli-path.md) | Implemented |
 | 0015 | [SKILL.md must not hardcode an install path for the CLI](rfc/completed/0015-no-hardcoded-install-path.md) | Implemented |
+| 0016 | [Add approval-gated implementation workflow to SKILL.md](rfc/completed/0016-approval-gated-implementation.md) | Implemented |
