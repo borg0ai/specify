@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "skillId": "specify",
   "channel": "stable",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "source": {
     "repository": "https://github.com/borg0ai/specify"
   },
