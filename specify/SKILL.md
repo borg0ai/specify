@@ -27,13 +27,13 @@ When a theme spans multiple concerns, use an **umbrella + children**:
 
 ## Where the CLI lives
 
-`specify` is a skill, not a per-project dependency — it is never expected to live inside the project whose RFCs it manages. Once installed (`npx skills add borg0ai/specify`, project-local or `-g` global), the CLI is at `<install-location>/specify/scripts/specify.mjs` — for example `~/.claude/skills/specify/scripts/specify.mjs` for a global install. To manage a project other than `specify` itself, invoke that installed script with `--root <target-project-path>`:
+`specify` is a skill, not a per-project dependency — it is never expected to live inside the project whose RFCs it manages. When this skill is invoked, the host provides the skill's own base directory (the folder containing this `SKILL.md`); `scripts/specify.mjs` is relative to *that* directory, not to the project being managed. To manage a project other than the one this skill's base directory sits in, resolve `scripts/specify.mjs` against the base directory and pass `--root <target-project-path>`:
 
 ```bash
-node ~/.claude/skills/specify/scripts/specify.mjs init --root /path/to/other-project --json
+node <this-skill's-base-directory>/scripts/specify.mjs init --root /path/to/other-project --json
 ```
 
-The `node scripts/specify.mjs ...` form in the Commands section below is relative to wherever the CLI is actually installed, not to the project being managed. Do not search the target project for `scripts/specify.mjs` — it won't be there unless that project is `specify`'s own dev checkout.
+Do not search the target project for `scripts/specify.mjs` — it won't be there unless that project is `specify`'s own dev checkout. Never hardcode an install path (e.g. `~/.claude/skills/specify/...`) — installs vary by agent, by project-local vs. global, and by machine; always resolve from the base directory the host gives you at invocation time.
 
 ## Commands
 
