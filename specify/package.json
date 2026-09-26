@@ -1,6 +1,6 @@
 {
   "name": "specify",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "CLI for managing RFC-based spec documents: init, validate, deliver, advance, archive, sync-check across ROADMAP.md, TASK_TRACKING.md, and rfc/NNNN-slug.md.",
   "license": "MIT",
   "type": "module",
